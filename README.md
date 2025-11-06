@@ -129,3 +129,15 @@ For questions or feedback, please open an issue on GitHub.
 
 - [Spring Boot Documentation](https://spring.io/projects/spring-boot)
 - [Apache Maven Documentation](https://maven.apache.org/guides/index.html)
+## Running the Application
+
+To run the application using Maven:
+mvn spring-boot:run
+## Accessing the Application via SSH Port Forwarding
+
+Use SSH port forwarding to map the remote port 8081 to your local port 8082:
+ssh -L 8082:localhost:8081 -p 5005 student@<your-vm-hostname>
+Then, in your browser, go to:
+http://localhost:8082
+How to access it locally using SSH port forwarding:
+ssh -L 8082:localhost:8081 ssh -p 5011 student@lab-7b26ae37-b882-4d58-8930-a67d4ab2a674.eastus.cloudapp.azure.com
