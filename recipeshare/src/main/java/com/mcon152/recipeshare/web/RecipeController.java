@@ -3,6 +3,8 @@ package com.mcon152.recipeshare.web;
 import com.mcon152.recipeshare.Recipe;
 import com.mcon152.recipeshare.service.RecipeFactory;
 import com.mcon152.recipeshare.service.RecipeService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
@@ -10,11 +12,12 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import java.net.URI;
 import java.util.List;
 
+
 @RestController
 @RequestMapping("/api/recipes")
 public class RecipeController {
     private final RecipeService recipeService;
-
+    private static final Logger logger = LoggerFactory.getLogger(RecipeController.class);
     public RecipeController(RecipeService recipeService) {
         this.recipeService = recipeService;
     }
@@ -25,10 +28,16 @@ public class RecipeController {
      */
     @PostMapping
     public ResponseEntity<Recipe> addRecipe(@RequestBody RecipeRequest recipeRequest) {
+
+        logger.info("POST /api/recipes entered");
+        logger.debug("Add recipe request: name={}, type={}",
+                recipeRequest.getTitle(), recipeRequest.getType());
+
         try {
             Recipe toSave = RecipeFactory.createFromRequest(recipeRequest);
             Recipe saved = recipeService.addRecipe(toSave);
 
+            logger.info("Created recipe with id={}", saved.getId());
             URI location = ServletUriComponentsBuilder
                     .fromCurrentRequest()           // /api/recipes
                     .path("/{id}")                  // /{id}
@@ -37,6 +46,8 @@ public class RecipeController {
 
             return ResponseEntity.created(location).body(saved);
         } catch (Exception e) {
+            logger.error("Error occurred while adding recipe: {}",
+                    e.getMessage(), e);
             return ResponseEntity.internalServerError().build();
         }
     }
@@ -46,7 +57,12 @@ public class RecipeController {
      */
     @GetMapping
     public ResponseEntity<List<Recipe>> getAllRecipes() {
-        return ResponseEntity.ok(recipeService.getAllRecipes());
+        logger.info("GET /api/recipes/{} entered");
+
+        List<Recipe> recipes = recipeService.getAllRecipes();
+        logger.info("Returned {} recipes", recipes.size());
+
+        return ResponseEntity.ok(recipes);
     }
 
     /**
@@ -54,9 +70,16 @@ public class RecipeController {
      */
     @GetMapping("/{id}")
     public ResponseEntity<Recipe> getRecipeById(@PathVariable long id) {
+        logger.info("GET /api/recipes entered");
         return recipeService.getRecipeById(id)
-                .map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.notFound().build());
+                .map(recipe -> {
+                    logger.info("Found recipe with id={}", id);
+                    return ResponseEntity.ok(recipe);
+                })
+                .orElseGet(() -> {
+                    logger.warn("Recipe not found with id={}", id);
+                    return ResponseEntity.notFound().build();
+                });
     }
 
     /**
@@ -64,12 +87,20 @@ public class RecipeController {
      */
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteRecipe(@PathVariable long id) {
+        logger.info("DELETE /api/recipes/{} entered", id);
         try {
             boolean deleted = recipeService.deleteRecipe(id);
-            return deleted
-                    ? ResponseEntity.noContent().build()
-                    : ResponseEntity.notFound().build();
+            if (deleted) {
+                logger.info("Deleted recipe with id={}", id);
+                return ResponseEntity.noContent().build();
+            } else {
+                logger.warn("Recipe not found with id={} not deleted", id);
+                return ResponseEntity.notFound().build();
+            }
+
         } catch (Exception e) {
+            logger.error("Error occurred while deleting recipe id={}: {}",
+                    id, e.getMessage(), e);
             return ResponseEntity.internalServerError().build();
         }
     }
@@ -79,10 +110,19 @@ public class RecipeController {
      */
     @PutMapping("/{id}")
     public ResponseEntity<Recipe> updateRecipe(@PathVariable long id, @RequestBody RecipeRequest updatedRequest) {
+        logger.info("PUT /api/recipes/{} entered", id);
+        logger.debug("Update recipe request: name={}, type={}",
+                updatedRequest.getTitle(), updatedRequest.getType());
         Recipe updatedRecipe = RecipeFactory.createFromRequest(updatedRequest);
         return recipeService.updateRecipe(id, updatedRecipe)
-                .map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.notFound().build());
+                .map(recipe -> {
+                    logger.info("Updated recipe with id={}", id);
+                    return ResponseEntity.ok(recipe);
+                })
+                .orElseGet(() -> {
+                    logger.warn("Recipe not found for update with id={}", id);
+                    return ResponseEntity.notFound().build();
+                });
     }
 
     /**
@@ -90,9 +130,18 @@ public class RecipeController {
      */
     @PatchMapping("/{id}")
     public ResponseEntity<Recipe> patchRecipe(@PathVariable long id, @RequestBody RecipeRequest partialRequest) {
+        logger.info("PATCH /api/recipes/{} entered", id);
+        logger.debug("Patch recipe request: name={}, type={}",
+                partialRequest.getTitle(), partialRequest.getType());
         Recipe partialRecipe = RecipeFactory.createFromRequest(partialRequest);
         return recipeService.patchRecipe(id, partialRecipe)
-                .map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.notFound().build());
+                .map(recipe -> {
+                    logger.info("Patched recipe with id={}", id);
+                    return ResponseEntity.ok(recipe);
+                })
+                .orElseGet(() -> {
+                    logger.warn("Recipe not found for patch with id={}", id);
+                    return ResponseEntity.notFound().build();
+                });
     }
 }
